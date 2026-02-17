@@ -1,0 +1,1202 @@
+openapi: 3.0.3
+info:
+  title: Chat Service API
+  description: |
+    A real-time chat service API that provides both REST endpoints for resource management 
+    and WebSocket connections for real-time messaging.
+    
+    ## Authentication
+    Currently, the API operates without authentication for development purposes.
+    
+    ## WebSocket Connections
+    Real-time chat functionality is available via WebSocket at `/ws/{roomId}`.
+    See the WebSocket section below for details.
+  version: 1.0.0
+  contact:
+    name: Chat API Support
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.chat.example.com
+    description: Production server
+
+paths:
+  # Health & System
+  /health:
+    get:
+      summary: Health check
+      description: Check if the server is running and healthy
+      operationId: healthCheck
+      tags: [System]
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                message: "Server is healthy"
+                timestamp: "2026-02-16T10:30:00Z"
+
+  /encryption/status:
+    get:
+      summary: Get encryption status
+      description: Check the availability and status of RSA encryption
+      operationId: getEncryptionStatus
+      tags: [System]
+      responses:
+        '200':
+          description: Encryption status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncryptionStatus'
+
+  # User Management
+  /users:
+    post:
+      summary: Create a new user
+      description: Register a new user in the chat system
+      operationId: createUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              name: "Alice"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    get:
+      summary: List all users
+      description: Get a list of all registered users
+      operationId: listUsers
+      tags: [Users]
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of users to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of users to skip
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+
+  /users/{userId}:
+    get:
+      summary: Get user details
+      description: Retrieve information about a specific user
+      operationId: getUser
+      tags: [Users]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: User details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update user
+      description: Update user information
+      operationId: updateUser
+      tags: [Users]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    delete:
+      summary: Delete user
+      description: Remove a user from the system
+      operationId: deleteUser
+      tags: [Users]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Room Management
+  /rooms:
+    get:
+      summary: List chat rooms
+      description: Get a list of all available chat rooms
+      operationId: listRooms
+      tags: [Rooms]
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of rooms to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of rooms to skip
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Rooms retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomList'
+
+    post:
+      summary: Create a new room
+      description: Create a new chat room
+      operationId: createRoom
+      tags: [Rooms]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+            example:
+              name: "General Discussion"
+              description: "A room for general topics"
+      responses:
+        '201':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRoomResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /rooms/{roomId}:
+    get:
+      summary: Get room details
+      description: Retrieve information about a specific room
+      operationId: getRoom
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+      responses:
+        '200':
+          description: Room details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update room
+      description: Update room information
+      operationId: updateRoom
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoomRequest'
+      responses:
+        '200':
+          description: Room updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    delete:
+      summary: Delete room
+      description: Remove a room from the system
+      operationId: deleteRoom
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Room deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rooms/{roomId}/users:
+    get:
+      summary: Get room members
+      description: List all users in a specific room
+      operationId: getRoomUsers
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Room members retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    post:
+      summary: Join room
+      description: Add a user to a room
+      operationId: joinRoom
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRoomRequest'
+            example:
+              userId: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: User joined room successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinRoomResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rooms/{roomId}/users/{userId}:
+    delete:
+      summary: Leave room
+      description: Remove a user from a room
+      operationId: leaveRoom
+      tags: [Rooms]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User left room successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Message Management
+  /messages:
+    post:
+      summary: Send a message
+      description: Send a message to a chat room
+      operationId: sendMessage
+      tags: [Messages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+            example:
+              userId: "550e8400-e29b-41d4-a716-446655440000"
+              roomId: "550e8400-e29b-41d4-a716-446655440001"
+              content: "Hello everyone!"
+      responses:
+        '201':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /rooms/{roomId}/messages:
+    get:
+      summary: Get room messages
+      description: Retrieve messages from a specific room
+      operationId: getRoomMessages
+      tags: [Messages]
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          description: Maximum number of messages to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of messages to skip (for pagination)
+          schema:
+            type: integer
+            default: 0
+        - name: before
+          in: query
+          description: Get messages before this timestamp (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: after
+          in: query
+          description: Get messages after this timestamp (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /messages/{messageId}:
+    get:
+      summary: Get message details
+      description: Retrieve a specific message by ID
+      operationId: getMessage
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Update message
+      description: Edit a message (if user has permission)
+      operationId: updateMessage
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMessageRequest'
+      responses:
+        '200':
+          description: Message updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '403':
+          description: Forbidden - user cannot edit this message
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete message
+      description: Delete a message (if user has permission)
+      operationId: deleteMessage
+      tags: [Messages]
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Message deleted successfully
+        '403':
+          description: Forbidden - user cannot delete this message
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    # System Schemas
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        message:
+          type: string
+          example: "Server is healthy"
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+          example: "1.0.0"
+      required: [status, message, timestamp]
+
+    EncryptionStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [available, unavailable]
+          example: "available"
+        message:
+          type: string
+          example: "RSA encryption is available"
+        keySize:
+          type: integer
+          example: 4096
+      required: [status, message]
+
+    # User Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Alice"
+        currentRoomId:
+          type: string
+          format: uuid
+          nullable: true
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        status:
+          type: string
+          enum: [online, offline, away]
+          example: "online"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-02-16T10:30:00Z"
+        lastSeenAt:
+          type: string
+          format: date-time
+          example: "2026-02-16T15:45:00Z"
+      required: [id, name, status, createdAt]
+
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: "Alice"
+      required: [name]
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        status:
+          type: string
+          enum: [online, offline, away]
+      minProperties: 1
+
+    CreateUserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message:
+          type: string
+          example: "User created successfully"
+      required: [userId, message]
+
+    UserList:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+          description: Total number of users (for pagination)
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [users, total]
+
+    # Room Schemas
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "General Discussion"
+        description:
+          type: string
+          maxLength: 500
+          example: "A room for general topics"
+        userCount:
+          type: integer
+          example: 5
+        messageCount:
+          type: integer
+          example: 42
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-02-16T10:00:00Z"
+        lastMessageAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-02-16T15:30:00Z"
+        isPrivate:
+          type: boolean
+          default: false
+          example: false
+      required: [id, name, userCount, messageCount, createdAt, isPrivate]
+
+    CreateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "General Discussion"
+        description:
+          type: string
+          maxLength: 500
+          example: "A room for general topics"
+        isPrivate:
+          type: boolean
+          default: false
+      required: [name]
+
+    UpdateRoomRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+      minProperties: 1
+
+    CreateRoomResponse:
+      type: object
+      properties:
+        roomId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        message:
+          type: string
+          example: "Room created successfully"
+      required: [roomId, message]
+
+    RoomList:
+      type: object
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: '#/components/schemas/Room'
+        total:
+          type: integer
+          description: Total number of rooms (for pagination)
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [rooms, total]
+
+    JoinRoomRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      required: [userId]
+
+    JoinRoomResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "User joined room successfully"
+        roomId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+      required: [message, roomId, userId]
+
+    # Message Schemas
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        userName:
+          type: string
+          example: "Alice"
+        roomId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: "Hello everyone!"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-16T15:30:00Z"
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: null
+        messageType:
+          type: string
+          enum: [text, image, file, system]
+          default: text
+          example: "text"
+      required: [id, userId, userName, roomId, content, timestamp, messageType]
+
+    SendMessageRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        roomId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: "Hello everyone!"
+        messageType:
+          type: string
+          enum: [text, image, file]
+          default: text
+      required: [userId, roomId, content]
+
+    UpdateMessageRequest:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [content]
+
+    SendMessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440002"
+        userId:
+          type: string
+          format: uuid
+        roomId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          example: "Message sent successfully"
+      required: [messageId, userId, roomId, message]
+
+    MessagesResponse:
+      type: object
+      properties:
+        roomId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        total:
+          type: integer
+          description: Total number of messages in the room
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+          description: Whether there are more messages available
+      required: [roomId, messages, total, hasMore]
+
+    # Error Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Resource not found"
+        message:
+          type: string
+          example: "The requested resource could not be found"
+        code:
+          type: integer
+          example: 404
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-02-16T15:30:00Z"
+      required: [error, code, timestamp]
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation failed"
+        message:
+          type: string
+          example: "Request validation failed"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "name"
+              message:
+                type: string
+                example: "Name is required"
+        code:
+          type: integer
+          example: 400
+        timestamp:
+          type: string
+          format: date-time
+      required: [error, code, timestamp]
+
+    # WebSocket Schemas
+    WebSocketMessage:
+      type: object
+      discriminator:
+        propertyName: type
+      properties:
+        type:
+          type: string
+          enum: [message, user_joined, user_left, typing, error]
+        timestamp:
+          type: string
+          format: date-time
+      required: [type, timestamp]
+
+    ChatMessage:
+      allOf:
+        - $ref: '#/components/schemas/WebSocketMessage'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [message]
+            data:
+              $ref: '#/components/schemas/Message'
+
+    UserJoinedMessage:
+      allOf:
+        - $ref: '#/components/schemas/WebSocketMessage'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [user_joined]
+            data:
+              type: object
+              properties:
+                user:
+                  $ref: '#/components/schemas/User'
+                roomId:
+                  type: string
+                  format: uuid
+
+    UserLeftMessage:
+      allOf:
+        - $ref: '#/components/schemas/WebSocketMessage'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [user_left]
+            data:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                userName:
+                  type: string
+                roomId:
+                  type: string
+                  format: uuid
+
+    TypingMessage:
+      allOf:
+        - $ref: '#/components/schemas/WebSocketMessage'
+        - type: object
+          properties:
+            type:
+              type: string 
+              enum: [typing]
+            data:
+              type: object
+              properties:
+                userId:
+                  type: string
+                  format: uuid
+                userName:
+                  type: string
+                roomId:
+                  type: string
+                  format: uuid
+                isTyping:
+                  type: boolean
+
+    WebSocketError:
+      allOf:
+        - $ref: '#/components/schemas/WebSocketMessage'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [error]
+            data:
+              type: object
+              properties:
+                code:
+                  type: integer
+                message:
+                  type: string
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Users
+    description: User management operations
+  - name: Rooms
+    description: Chat room management operations
+  - name: Messages
+    description: Message operations
+
+# WebSocket Documentation
+x-websocket:
+  description: |
+    ## WebSocket Connection for Real-time Chat
+    
+    The chat service provides real-time communication via WebSocket connections.
+    
+    ### Connection
+    Connect to: `ws://localhost:3000/ws/{roomId}`
+    
+    ### Authentication
+    Currently no authentication is required for WebSocket connections.
+    
+    ### Message Types
+    
+    #### Incoming Messages (Client → Server)
+    
+    **Send Message:**
+    ```json
+    {
+      "type": "send_message",
+      "data": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "content": "Hello everyone!"
+      }
+    }
+    ```
+    
+    **Typing Indicator:**
+    ```json
+    {
+      "type": "typing",
+      "data": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "isTyping": true
+      }
+    }
+    ```
+    
+    **Join Room:**
+    ```json
+    {
+      "type": "join",
+      "data": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000"
+      }
+    }
+    ```
+    
+    #### Outgoing Messages (Server → Client)
+    
+    **New Message:**
+    ```json
+    {
+      "type": "message",
+      "timestamp": "2026-02-16T15:30:00Z",
+      "data": {
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "userName": "Alice",
+        "roomId": "550e8400-e29b-41d4-a716-446655440001",
+        "content": "Hello everyone!",
+        "timestamp": "2026-02-16T15:30:00Z",
+        "messageType": "text"
+      }
+    }
+    ```
+    
+    **User Joined:**
+    ```json
+    {
+      "type": "user_joined",
+      "timestamp": "2026-02-16T15:30:00Z",
+      "data": {
+        "user": {
+          "id": "550e8400-e29b-41d4-a716-446655440000",
+          "name": "Alice",
+          "status": "online"
+        },
+        "roomId": "550e8400-e29b-41d4-a716-446655440001"
+      }
+    }
+    ```
+    
+    **User Left:**
+    ```json
+    {
+      "type": "user_left",
+      "timestamp": "2026-02-16T15:30:00Z",
+      "data": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "userName": "Alice",
+        "roomId": "550e8400-e29b-41d4-a716-446655440001"
+      }
+    }
+    ```
+    
+    **Typing Indicator:**
+    ```json
+    {
+      "type": "typing",
+      "timestamp": "2026-02-16T15:30:00Z",
+      "data": {
+        "userId": "550e8400-e29b-41d4-a716-446655440000",
+        "userName": "Alice",
+        "roomId": "550e8400-e29b-41d4-a716-446655440001",
+        "isTyping": true
+      }
+    }
+    ```
+    
+    **Error:**
+    ```json
+    {
+      "type": "error",
+      "timestamp": "2026-02-16T15:30:00Z",
+      "data": {
+        "code": 400,
+        "message": "Invalid message format"
+      }
+    }
+    ```
+    
+    ### Connection Lifecycle
+    
+    1. **Connect**: Open WebSocket connection to `/ws/{roomId}`
+    2. **Join**: Send join message with userId
+    3. **Chat**: Send and receive messages in real-time
+    4. **Disconnect**: Close connection gracefully
+    
+    ### Error Handling
+    
+    - Invalid message format: 400 error
+    - Room not found: 404 error
+    - User not found: 404 error
+    - Connection limit exceeded: 429 error
+    
+    ### Rate Limiting
+    
+    - Maximum 10 messages per second per user
+    - Maximum 1000 concurrent connections per room
