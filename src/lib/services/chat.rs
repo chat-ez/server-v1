@@ -1,19 +1,38 @@
+use std::sync::Arc;
 use std::time::Duration;
 
+use axum::routing::post;
 use axum::{body::Bytes, extract::Request, response::Response};
 use axum::{routing::get, Router};
 use hyper::HeaderMap;
+use tokio::sync::Mutex;
 use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
 use tracing::Span;
 
 use crate::handlers;
+use crate::models::room::Room;
 
-#[derive(Default, Debug, Clone)]
-pub struct ServerState;
+#[derive(Debug, Clone)]
+pub struct ServerState {
+    pub(crate) rooms: Arc<Mutex<Vec<Room>>>,
+}
+
+impl Default for ServerState {
+    fn default() -> Self {
+        let room1 = Room::new("Bing".to_string());
+        let room2 = Room::new("Bong".to_string());
+        let rooms = vec![room1, room2];
+        Self {
+            rooms: Arc::new(Mutex::new(rooms)),
+        }
+    }
+}
 
 pub fn router(app: ServerState) -> Router {
     Router::new()
         .route("/health", get(handlers::health::handle_request))
+        .route("/rooms", get(handlers::room::get_rooms))
+        .route("/rooms", post(handlers::room::create_room))
         .with_state(app)
         // Configures tracing layer to log requests and responses in the log file
         .layer(
