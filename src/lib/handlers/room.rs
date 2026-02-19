@@ -1,8 +1,11 @@
 use std::convert::Infallible;
 
-use axum::{extract::State, Json};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
 use http_body_util::Full;
-use hyper::{body::Bytes, Response, StatusCode};
+use hyper::{Response, StatusCode, body::Bytes};
 use serde::Deserialize;
 use tracing::instrument;
 
@@ -53,4 +56,35 @@ pub(crate) async fn create_room(
         .status(StatusCode::CREATED)
         .body(Full::new(Bytes::from("Room created successfully")))
         .unwrap()
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct AddUserRequest {
+    user_name: String,
+}
+
+#[instrument]
+pub(crate) async fn add_user_to_room(
+    State(app): State<ServerState>,
+    Path(room_name): Path<String>,
+    Json(request): Json<AddUserRequest>,
+) -> Result<Response<Full<Bytes>>, Infallible> {
+    let mut guard = app.rooms.lock().await;
+
+    // Find the room
+    if let Some(room) = guard.iter_mut().find(|r| r.name == room_name) {
+        // Create and add user to room
+        let user = crate::models::user::User::new(request.user_name);
+        room.add_user(user);
+
+        Ok(Response::builder()
+            .status(StatusCode::OK)
+            .body(Full::new(Bytes::from("User added to room successfully")))
+            .unwrap())
+    } else {
+        Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Full::new(Bytes::from("Room not found")))
+            .unwrap())
+    }
 }
