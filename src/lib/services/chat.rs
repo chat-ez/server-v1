@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
 use tracing::Span;
 
-use crate::handlers;
+use crate::api::handlers;
 use crate::models::room::Room;
 
 #[derive(Debug, Clone)]
