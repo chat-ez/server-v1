@@ -1,11 +1,13 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
 use anyhow::Result;
-use chat_ez::services::chat::{router, ServerState};
+use chat_ez::services::chat::{ServerState, router};
+use hyper::StatusCode;
+use serde_json::json;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_appender::rolling;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 fn init_tracing(app_name: &str) -> tracing_appender::non_blocking::WorkerGuard {
     // Create directory: /tmp/__application_name__/
@@ -45,8 +47,93 @@ async fn main() -> Result<()> {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
+    let _ = tokio::task::spawn(pre_populate());
     axum::serve(TcpListener::bind(addr).await?, router).await?;
 
     info!("Stopping server");
     Ok(())
+}
+
+/// Utility function to pre-populate server during development
+async fn pre_populate() {
+    // Give tcp listener some time to actually set itself up
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let client = reqwest::Client::new();
+    if client
+        .get("http://localhost:3000/health")
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .eq(&StatusCode::OK)
+    {
+        for (room, users, messages) in [
+            (
+                "General",
+                vec!["Bob", "Janice"],
+                vec![("Bob", "hey"), ("Janice", "whats up?")],
+            ),
+            (
+                "Shit Talk",
+                vec!["Bob", "Janice"],
+                vec![
+                    ("Bob", "There's no toilet paper in the bathroom"),
+                    ("Janice", "That sucks bob"),
+                ],
+            ),
+            (
+                "Memes",
+                vec!["Bob", "Janice", "Chet"],
+                vec![
+                    ("Bob", "Yo check out this meme: meme.jpg"),
+                    ("Janice", "Haha good one"),
+                    ("Bob", "Thanks"),
+                    ("Chet", "Look at what i found seriousmeme.gif"),
+                    ("Bob", "Hhaha"),
+                    ("Bob", "I saw that one yesterday"),
+                ],
+            ),
+        ] {
+            let payload = json!({
+               "room_name": room,
+            });
+
+            let _ = client
+                .post("http://localhost:3000/rooms")
+                .header("Content-Type", "application/json")
+                .body(serde_json::to_string(&payload).unwrap())
+                .send()
+                .await
+                .inspect(|r| info!("{room} created with status: {}", r.status()));
+
+            for user in users {
+                let payload = json!({
+                    "user_name": user,
+                });
+
+                let _ = client
+                    .post(format!("http://localhost:3000/rooms/{}/users", room))
+                    .header("Content-Type", "application/json")
+                    .body(serde_json::to_string(&payload).unwrap())
+                    .send()
+                    .await
+                    .inspect(|r| info!("{room} created with status: {}", r.status()));
+            }
+
+            for message in messages {
+                let payload = json!({
+                    "name": message.0,
+                    "message": message.1,
+                });
+
+                let _ = client
+                    .post(format!("http://localhost:3000/rooms/{}/messages", room))
+                    .header("Content-Type", "application/json")
+                    .body(serde_json::to_string(&payload).unwrap())
+                    .send()
+                    .await
+                    .inspect(|r| info!("{} created with status: {}", message.1, r.status()));
+            }
+        }
+    }
 }
