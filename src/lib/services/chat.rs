@@ -19,11 +19,8 @@ pub struct ServerState {
 
 impl Default for ServerState {
     fn default() -> Self {
-        let room1 = Room::new("Bing".to_string());
-        let room2 = Room::new("Bong".to_string());
-        let rooms = vec![room1, room2];
         Self {
-            rooms: Arc::new(Mutex::new(rooms)),
+            rooms: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -33,6 +30,11 @@ pub fn router(app: ServerState) -> Router {
         .route("/health", get(handlers::health::handle_request))
         .route("/rooms", get(handlers::room::get_rooms))
         .route("/rooms", post(handlers::room::create_room))
+        .route(
+            "/rooms/{room_name}/users",
+            post(handlers::room::add_user_to_room),
+        )
+        // .route("/rooms/{:room}/messages", get(handlers::room::get)) // Get messages from a room
         .with_state(app)
         // Configures tracing layer to log requests and responses in the log file
         .layer(

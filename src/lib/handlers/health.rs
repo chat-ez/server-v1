@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use axum::extract::State;
 use http_body_util::Full;
-use hyper::{body::Bytes, Response, StatusCode};
+use hyper::{Response, StatusCode, body::Bytes};
 use tracing::instrument;
 
 use crate::services::chat::ServerState;

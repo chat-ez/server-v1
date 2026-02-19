@@ -27,4 +27,8 @@ impl Room {
     pub(crate) fn new_message(&mut self, message: Message) {
         self.messages.push(message);
     }
+
+    pub(crate) fn add_user(&mut self, user: User) {
+        self.users.insert(user);
+    }
 }
