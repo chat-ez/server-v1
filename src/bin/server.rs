@@ -1,13 +1,16 @@
 use std::{net::SocketAddr, time::Duration};
 
 use anyhow::Result;
-use chat_ez::services::chat::{ServerState, router};
+use chat_ez::{
+    api::shapes::{messages::PostMessageRequest, rooms::PostRoomRequest, users::PostUserRequest},
+    services::chat::{router, ServerState},
+};
 use hyper::StatusCode;
 use serde_json::json;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_appender::rolling;
-use tracing_subscriber::{EnvFilter, fmt};
+use tracing_subscriber::{fmt, EnvFilter};
 
 fn init_tracing(app_name: &str) -> tracing_appender::non_blocking::WorkerGuard {
     // Create directory: /tmp/__application_name__/
@@ -94,9 +97,10 @@ async fn pre_populate() {
                 ],
             ),
         ] {
-            let payload = json!({
-               "room_name": room,
-            });
+            let payload = PostRoomRequest {
+                name: room.to_string(),
+                description: "".to_string(),
+            };
 
             let _ = client
                 .post("http://localhost:3000/rooms")
@@ -107,9 +111,9 @@ async fn pre_populate() {
                 .inspect(|r| info!("{room} created with status: {}", r.status()));
 
             for user in users {
-                let payload = json!({
-                    "user_name": user,
-                });
+                let payload = PostUserRequest {
+                    name: user.to_string(),
+                };
 
                 let _ = client
                     .post(format!("http://localhost:3000/rooms/{}/users", room))
@@ -117,14 +121,14 @@ async fn pre_populate() {
                     .body(serde_json::to_string(&payload).unwrap())
                     .send()
                     .await
-                    .inspect(|r| info!("{room} created with status: {}", r.status()));
+                    .inspect(|r| info!("{user} created with status: {}", r.status()));
             }
 
             for message in messages {
-                let payload = json!({
-                    "name": message.0,
-                    "message": message.1,
-                });
+                let payload = PostMessageRequest {
+                    user_uuid: message.0.to_string(),
+                    content: message.1.to_string(),
+                };
 
                 let _ = client
                     .post(format!("http://localhost:3000/rooms/{}/messages", room))

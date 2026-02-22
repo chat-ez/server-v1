@@ -12,5 +12,5 @@ pub(crate) async fn handle_request() -> Result<Response<Full<Bytes>>, ServerErro
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("Server is Healthy")))
-        .map_err(|_| ServerError::HealthError)?)
+        .map_err(|_| ServerError::Health)?)
 }

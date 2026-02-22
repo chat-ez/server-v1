@@ -1,6 +1,11 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::models::user::User;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Message(User, String);
+pub(crate) struct Message {
+    uuid: String,
+    /// Encrypted structure of the message, the server will just generate a uuid and store the
+    /// message contents here. Clients will determine how to deserialize.
+    content: String,
+    timestamp: DateTime<Utc>,
+}
