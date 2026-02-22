@@ -1,20 +1,22 @@
 use std::convert::Infallible;
 
 use axum::{
-    Json,
     extract::{Path, State},
+    Json,
 };
 use http_body_util::Full;
-use hyper::{Response, StatusCode, body::Bytes};
-use serde::Deserialize;
+use hyper::{body::Bytes, Response, StatusCode};
 use tracing::instrument;
 
-use crate::{models::room::Room, services::chat::ServerState};
-
-#[derive(Deserialize, Debug)]
-pub struct CreateRoomRequest {
-    room_name: String,
-}
+use crate::{
+    api::shapes::{
+        error::ServerError,
+        rooms::{PostRoomRequest, PostRoomResponse},
+        users::PostUserRequest,
+    },
+    models::room::Room,
+    services::chat::ServerState,
+};
 
 #[instrument]
 pub(crate) async fn get_rooms(
@@ -34,47 +36,47 @@ pub(crate) async fn get_rooms(
 #[instrument]
 pub(crate) async fn create_room(
     State(app): State<ServerState>,
-    Json(request): Json<CreateRoomRequest>,
-) -> Response<Full<Bytes>> {
+    Json(request): Json<PostRoomRequest>,
+) -> Result<Response<Full<Bytes>>, ServerError> {
     let mut guard = app.rooms.lock().await;
 
     // Validate the room does not already exist
-    if guard.iter().any(|r| r.name == request.room_name) {
-        return Response::builder()
+    if guard.iter().any(|r| r.name == request.name) {
+        return Ok(Response::builder()
             .status(StatusCode::CONFLICT)
             .body(Full::new(Bytes::from(
                 "Room with this name already exists!",
             )))
-            .unwrap();
+            .unwrap());
     }
 
-    let room = Room::new(request.room_name);
+    let room = Room::new(request.name, request.description);
+    let response = PostRoomResponse {
+        uuid: room.uuid.clone(),
+    };
 
     guard.push(room);
 
-    Response::builder()
-        .status(StatusCode::CREATED)
-        .body(Full::new(Bytes::from("Room created successfully")))
-        .unwrap()
-}
+    let json_bytes = serde_json::to_vec(&response)?;
 
-#[derive(Deserialize, Debug)]
-pub(crate) struct AddUserRequest {
-    user_name: String,
+    Ok(Response::builder()
+        .status(StatusCode::CREATED)
+        .body(Full::new(Bytes::from(json_bytes)))
+        .unwrap())
 }
 
 #[instrument]
 pub(crate) async fn add_user_to_room(
     State(app): State<ServerState>,
     Path(room_name): Path<String>,
-    Json(request): Json<AddUserRequest>,
+    Json(request): Json<PostUserRequest>,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     let mut guard = app.rooms.lock().await;
 
     // Find the room
     if let Some(room) = guard.iter_mut().find(|r| r.name == room_name) {
         // Create and add user to room
-        let user = crate::models::user::User::new(request.user_name);
+        let user = crate::models::user::User::new(request.name);
         room.add_user(user);
 
         Ok(Response::builder()
