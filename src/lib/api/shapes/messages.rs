@@ -1,24 +1,19 @@
-use axum::response::IntoResponse;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostMessageRequest;
+pub struct PostMessageRequest {
+    pub user_uuid: String,
+    pub content: String,
+}
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostMessageResponse;
-
-impl IntoResponse for PostMessageResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+pub struct PostMessageResponse {
+    /// unique id of the message that was sent
+    pub uuid: String,
+    pub timestamp: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutMessageRequest;
+pub struct PutMessageRequest;
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutMessageResponse;
-
-impl IntoResponse for PutMessageResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
-}
+pub struct PutMessageResponse;

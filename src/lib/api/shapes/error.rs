@@ -2,12 +2,18 @@ use axum::{body::Body, response::IntoResponse};
 use hyper::{Response, StatusCode};
 use thiserror::Error;
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug)]
 pub enum ServerError {
     /// Thrown by the /health API when the service is not healthy or the Response constructor
     /// fails
     #[error("The Service returned an error indiciating it's unhealthy")]
-    HealthError,
+    Health,
+
+    #[error("Error during response construction")]
+    ResponseConstruction,
+
+    #[error("Json parser error {0}")]
+    JsonParse(#[from] serde_json::Error),
 }
 
 impl IntoResponse for ServerError {

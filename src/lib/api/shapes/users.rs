@@ -1,24 +1,24 @@
-use axum::response::IntoResponse;
+use axum::{body::Body, response::Response};
+use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostUserRequest;
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostUserResponse;
+use crate::api::shapes::error::ServerError;
 
-impl IntoResponse for PostUserResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+/// Struct used when sending a post /users requests to the server in order to create a user
+/// instance on the server
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PostUserRequest {
+    /// public key that the server will store on behalf of user
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutUserRequest;
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutUserResponse;
-
-impl IntoResponse for PutUserResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+pub struct PostUserResponse {
+    pub uuid: String,
+    pub message: String,
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PutUserRequest;
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PutUserResponse;

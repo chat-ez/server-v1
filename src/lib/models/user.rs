@@ -3,15 +3,15 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub(crate) struct User {
-    id: String,
-    name: String,
+    uuid: String,
+    user_name: String,
 }
 
 impl User {
-    pub(crate) fn new(name: String) -> Self {
+    pub(crate) fn new(user_name: String) -> Self {
         Self {
-            id: Uuid::new_v4().to_string(),
-            name,
+            uuid: Uuid::new_v4().to_string(),
+            user_name,
         }
     }
 }

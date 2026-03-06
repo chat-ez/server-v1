@@ -34,6 +34,10 @@ pub fn router(app: ServerState) -> Router {
             "/rooms/{room_name}/users",
             post(handlers::room::add_user_to_room),
         )
+        .route(
+            "/rooms/{room_name}/message",
+            post(handlers::message::post_message),
+        )
         // .route("/rooms/{:room}/messages", get(handlers::room::get)) // Get messages from a room
         .with_state(app)
         // Configures tracing layer to log requests and responses in the log file

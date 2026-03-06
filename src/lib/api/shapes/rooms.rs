@@ -1,44 +1,27 @@
-use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostRoomRequest {
-    name: String,
-    description: String,
+pub struct PostRoomRequest {
+    pub name: String,
+    pub description: String,
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PostRoomResponse;
-
-impl IntoResponse for PostRoomResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+pub struct PostRoomResponse {
+    /// Unique id for the room
+    pub uuid: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutRoomRequest {
-    name: Option<String>,
-    description: Option<String>,
-}
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct PutRoomResponse;
-
-impl IntoResponse for PutRoomResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+pub struct PutRoomRequest {
+    /// Unique id for the room to update
+    pub uuid: String,
+    /// Pass a value here to change the name
+    pub name: Option<String>,
+    /// Pass a value here to change the description
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct JoinRoomRequest {
-    user_id: String,
-    room_id: String,
-}
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub(crate) struct JoinRoomResponse;
-
-impl IntoResponse for JoinRoomResponse {
-    fn into_response(self) -> axum::response::Response {
-        todo!()
-    }
+pub struct PutRoomResponse {
+    pub uuid: String,
 }
