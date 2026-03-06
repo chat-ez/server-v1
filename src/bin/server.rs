@@ -6,7 +6,6 @@ use chat_ez::{
     services::chat::{router, ServerState},
 };
 use hyper::StatusCode;
-use serde_json::json;
 use tokio::net::TcpListener;
 use tracing::info;
 use tracing_appender::rolling;
